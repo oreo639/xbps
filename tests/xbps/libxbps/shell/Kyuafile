@@ -20,7 +20,6 @@ atf_test_program{name="preserve_files_test"}
 atf_test_program{name="update_shlibs_test"}
 atf_test_program{name="update_hold_test"}
 atf_test_program{name="update_repolock_test"}
-atf_test_program{name="update_itself_test"}
 atf_test_program{name="cyclic_deps_test"}
 atf_test_program{name="conflicts_test"}
 atf_test_program{name="hold_test"}

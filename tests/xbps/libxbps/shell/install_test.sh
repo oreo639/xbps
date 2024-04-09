@@ -484,7 +484,7 @@ update_xbps_body() {
 	cd ..
 	xbps-rindex -d -a repo/*.xbps
 	atf_check_equal $? 0
-	out=$(xbps-install -r root --repository=repo -yun)
+	out=$(xbps-install -r root --repository=repo -yun xbps)
 	set -- $out
 	exp="$1 $2 $3 $4"
 	atf_check_equal "$exp" "xbps-1.1_1 update noarch $(readlink -f repo)"
@@ -537,7 +537,7 @@ update_xbps_virtual_body() {
 	cd ..
 	xbps-rindex -d -a repo/*.xbps
 	atf_check_equal $? 0
-	out=$(xbps-install -r root --repository=repo -yun)
+	out=$(xbps-install -r root --repository=repo -yun xbps-git)
 	set -- $out
 	exp="$1 $2 $3 $4"
 	atf_check_equal "$exp" "xbps-git-1.1_1 update noarch $(readlink -f repo)"
