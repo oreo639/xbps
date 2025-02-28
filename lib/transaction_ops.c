@@ -226,7 +226,7 @@ trans_find_pkg(struct xbps_handle *xhp, const char *pkg, bool force)
  * Returns 1 if there's an update, 0 if none or -1 on error.
  */
 static int
-xbps_autoupdate(struct xbps_handle *xhp)
+trans_check_uptodate(struct xbps_handle *xhp, const char *checkpkg)
 {
 	xbps_array_t rdeps;
 	xbps_dictionary_t pkgd;
@@ -237,8 +237,8 @@ xbps_autoupdate(struct xbps_handle *xhp)
 	 * Check if there's a new update for XBPS before starting
 	 * another transaction.
 	 */
-	if (((pkgd = xbps_pkgdb_get_pkg(xhp, "xbps")) == NULL) &&
-	    ((pkgd = xbps_pkgdb_get_virtualpkg(xhp, "xbps")) == NULL))
+	if (((pkgd = xbps_pkgdb_get_pkg(xhp, checkpkg)) == NULL) &&
+	    ((pkgd = xbps_pkgdb_get_virtualpkg(xhp, checkpkg)) == NULL))
 		return 0;
 
 	if (!xbps_dictionary_get_cstring_nocopy(pkgd, "pkgver", &pkgver)) {
@@ -257,7 +257,7 @@ xbps_autoupdate(struct xbps_handle *xhp)
 			return 0;
 		}
 		/* a new xbps version is available, check its revdeps */
-		rdeps = xbps_pkgdb_get_pkg_revdeps(xhp, "xbps");
+		rdeps = xbps_pkgdb_get_pkg_revdeps(xhp, pkgname);
 		for (unsigned int i = 0; i < xbps_array_count(rdeps); i++)  {
 			const char *curpkgver = NULL;
 			char curpkgn[XBPS_NAME_SIZE] = {0};
@@ -273,17 +273,6 @@ xbps_autoupdate(struct xbps_handle *xhp)
 			if (rv && rv != ENOENT && rv != EEXIST && rv != ENODEV)
 				return -1;
 		}
-		/*
-		 * Set XBPS_FLAG_FORCE_REMOVE_REVDEPS to ignore broken
-		 * reverse dependencies in xbps_transaction_prepare().
-		 *
-		 * This won't skip revdeps of the xbps pkg, rather other
-		 * packages in rootdir that could be broken indirectly.
-		 *
-		 * A sysup transaction after updating xbps should fix them
-		 * again.
-		 */
-		xhp->flags |= XBPS_FLAG_FORCE_REMOVE_REVDEPS;
 		return 1;
 	} else if (rv == ENOENT || rv == EEXIST || rv == ENODEV) {
 		/* no update */
@@ -305,17 +294,12 @@ xbps_transaction_update_packages(struct xbps_handle *xhp)
 	bool newpkg_found = false;
 	int rv = 0;
 
-	rv = xbps_autoupdate(xhp);
-	switch (rv) {
-	case 1:
-		/* xbps needs to be updated, don't allow any other update */
-		return EBUSY;
-	case -1:
-		/* error */
+	if (xbps_pkgdb_init(xhp) != 0)
 		return EINVAL;
-	default:
-		break;
-	}
+
+	/* Notify consumer if xbps is out of date */
+	if (trans_check_uptodate(xhp, "xbps") == 1)
+		xbps_set_cb_state(xhp, XBPS_STATE_OUTOFDATE, 0, "xbps", "This can be resolved by running xbps-install -u");
 
 	iter = xbps_dictionary_iterator(xhp->pkgdb);
 	assert(iter);
@@ -355,21 +339,9 @@ xbps_transaction_update_pkg(struct xbps_handle *xhp, const char *pkg, bool force
 	xbps_array_t rdeps;
 	int rv;
 
-	rv = xbps_autoupdate(xhp);
-	xbps_dbg_printf("%s: xbps_autoupdate %d\n", __func__, rv);
-	switch (rv) {
-	case 1:
-		/* xbps needs to be updated, only allow xbps to be updated */
-		if (strcmp(pkg, "xbps"))
-			return EBUSY;
-		return 0;
-	case -1:
-		/* error */
-		return EINVAL;
-	default:
-		/* no update */
-		break;
-	}
+	/* Notify consumer if xbps is out of date */
+	if (trans_check_uptodate(xhp, "xbps") == 1)
+		xbps_set_cb_state(xhp, XBPS_STATE_OUTOFDATE, 0, "xbps", "This can be resolved by running xbps-install -u");
 
 	/* update its reverse dependencies */
 	rdeps = xbps_pkgdb_get_pkg_revdeps(xhp, pkg);
@@ -406,20 +378,9 @@ xbps_transaction_install_pkg(struct xbps_handle *xhp, const char *pkg, bool forc
 	xbps_array_t rdeps;
 	int rv;
 
-	rv = xbps_autoupdate(xhp);
-	switch (rv) {
-	case 1:
-		/* xbps needs to be updated, only allow xbps to be updated */
-		if (strcmp(pkg, "xbps"))
-			return EBUSY;
-		return 0;
-	case -1:
-		/* error */
-		return EINVAL;
-	default:
-		/* no update */
-		break;
-	}
+	/* Notify consumer if xbps is out of date */
+	if (trans_check_uptodate(xhp, "xbps") == 1)
+		xbps_set_cb_state(xhp, XBPS_STATE_OUTOFDATE, 0, "xbps", "This can be resolved by running xbps-install -u");
 
 	/* update its reverse dependencies */
 	rdeps = xbps_pkgdb_get_pkg_revdeps(xhp, pkg);

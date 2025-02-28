@@ -158,6 +158,9 @@ state_cb(const struct xbps_state_cb_data *xscd, void *cbdata UNUSED)
 	case XBPS_STATE_UNPACK_FILE_PRESERVED:
 		printf("%s\n", xscd->desc);
 		break;
+	case XBPS_STATE_OUTOFDATE:
+		xbps_warn_printf("The '%s' package is out of date. %s\n", xscd->arg, xscd->desc : xscd->desc ? "");
+		break;
 	/* errors */
 	case XBPS_STATE_TRANS_FAIL:
 	case XBPS_STATE_UNPACK_FAIL:
